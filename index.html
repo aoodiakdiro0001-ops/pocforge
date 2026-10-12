@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoCForge | Bug Bounty PoC Report Builder</title>
+<meta name="description" content="Build formatted Proof-of-Concept reports with payloads in cURL, Python and HTML for authorized bug bounty submissions.">
+<link rel="canonical" href="https://aoodiakdiro0001-ops.github.io/pocforge/">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0b0e17">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PoCForge | PoC Report Builder">
+<meta property="og:description" content="Vuln type + payload → formatted PoC report with cURL, Python and HTML.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Consolas,monospace}
+:root{--bg:#0b0e17;--panel:#131a30;--line:#283257;--grn:#34d399;--blu:#60a5fa;--ylw:#fbbf24;--red:#f87171;--txt:#dde4f4;--mut:#8b98b8}
+body{background:var(--bg);color:var(--txt)}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{font-size:22px;font-weight:900;color:var(--red)}
+.logo small{display:block;font-size:11px;color:var(--mut);font-weight:400}
+header select{margin-left:auto;background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:14px;padding:7px 10px;font-size:13px}
+.tabs{display:flex;gap:6px;padding:14px 16px 0;flex-wrap:wrap;max-width:1100px;margin:0 auto}
+.tabs button{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-bottom:none;padding:10px 16px;border-radius:12px 12px 0 0;cursor:pointer;font-weight:800;font-size:13px}
+.tabs button.on{background:#1c2547;color:var(--red)}
+main{max-width:1100px;margin:0 auto;padding:18px 15px 60px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:0 14px 14px 14px;padding:22px;display:none}
+.panel.on{display:block}
+.panel h2{color:var(--red);margin-bottom:6px;font-size:19px}
+.panel p.sub{color:var(--mut);font-size:13px;margin-bottom:12px;line-height:1.7}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.box{background:#0b0e17;border:1px solid var(--line);border-radius:14px;padding:16px}
+.box h3{font-size:14px;color:var(--blu);margin-bottom:10px}
+label.fl{display:block;font-size:12.5px;color:var(--mut);margin:8px 0 3px}
+input[type=text],select,textarea{background:#0b0e17;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px 13px;font-size:13.5px;outline:none;width:100%}
+textarea{min-height:80px;font-family:Consolas,monospace;font-size:12.5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+button.go{background:var(--red);color:#1c0505;border:none;padding:11px 26px;border-radius:10px;font-weight:900;cursor:pointer;font-size:14px}
+button.alt{background:transparent;color:var(--blu);border:1px solid var(--blu);padding:9px 16px;border-radius:10px;cursor:pointer;font-size:13px}
+pre.out{background:#0b0e17;border:1px solid var(--line);border-radius:10px;padding:14px;font-size:12.5px;overflow:auto;max-height:520px;direction:ltr;text-align:left;white-space:pre-wrap}
+.note{background:#1c2547;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--mut);margin:10px 0;line-height:1.7}
+.sev{display:inline-block;font-size:12px;font-weight:900;padding:4px 14px;border-radius:12px}
+.s-Critical{background:#3d1414;color:var(--red)} .s-High{background:#3d2410;color:var(--ylw)} .s-Medium{background:#3a2c10;color:var(--ylw)} .s-Low{background:#0e2a1d;color:var(--grn)}
+.hist{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.donate{background:linear-gradient(135deg,#1c2547,#0e2a1d);border:1px solid var(--grn);border-radius:16px;padding:20px;text-align:center;margin-top:8px;font-size:13px}
+.donate .addr{background:#0b0e17;border-radius:10px;padding:10px;font-family:monospace;font-size:12px;word-break:break-all;direction:ltr;margin:6px auto;color:var(--grn);max-width:560px}
+.adslot{max-width:1100px;margin:12px auto 0;padding:0 15px;text-align:center}
+.adslot .ph{display:block;border:1px dashed var(--line);border-radius:10px;color:var(--mut);font-size:12px;padding:10px}
+footer{text-align:center;color:var(--mut);font-size:12.5px;padding:26px 16px;border-top:1px solid var(--line);line-height:2}
+footer a{color:var(--grn)}
+#toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 25px;border-radius:25px;z-index:200;display:none;font-size:14px;max-width:92vw;text-align:center}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">📝 PoCForge<small data-i="tag"></small></div>
+<select id="langSel" onchange="setLang(this.value)">
+<option value="en" selected>🇬🇧 English</option><option value="tr">🇹🇷 Türkçe</option><option value="ar">🇸🇦 العربية</option>
+</select>
+</header>
+<div class="note" style="max-width:1100px;margin:12px auto 0"><span data-i="legalNote" style="display:block;background:#3d1414;border:1px solid var(--red);color:#ffb4b4;border-radius:10px;padding:10px 14px;font-size:12.5px"></span></div>
+<div class="tabs" id="tabs"></div>
+<main>
+<section class="panel on" id="p-build">
+<h2 data-i="bT"></h2><p class="sub" data-i="bS"></p>
+<div class="grid2">
+<div class="box"><h3 data-i="inT"></h3>
+<label class="fl" data-i="fType"></label><select id="vType"></select>
+<label class="fl" data-i="fTarget"></label><input type="text" id="vTarget" data-i-ph="targetPh" style="direction:ltr">
+<label class="fl" data-i="fParam"></label><input type="text" id="vParam" value="q" style="direction:ltr;max-width:200px">
+<label class="fl" data-i="fMethod"></label><select id="vMethod" style="max-width:150px"><option>GET</option><option>POST</option></select>
+<label class="fl" data-i="fPayload"></label><select id="vPayload"></select>
+<label class="fl" data-i="fSev"></label><select id="vSev" style="max-width:180px"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+<label class="fl" data-i="fHandle"></label><input type="text" id="vHandle" data-i-ph="handlePh" style="max-width:220px">
+<div class="row"><button class="go" onclick="buildPoC()" data-i="btnBuild"></button></div>
+</div>
+<div class="box"><h3 data-i="outT"></h3><div id="pocOut"><p style="color:var(--mut)">—</p></div></div>
+</div>
+</section>
+<section class="panel" id="p-hist">
+<h2 data-i="hT"></h2><p class="sub" data-i="hS"></p>
+<div class="row"><button class="alt" onclick="exportHist()" data-i="btnExp"></button><button class="alt" onclick="clearHist()" data-i="btnClear"></button></div>
+<div id="histList"></div>
+</section>
+<section class="panel" id="p-donate">
+<h2 data-i="doT"></h2><p class="sub" data-i="doS"></p>
+<div class="donate">
+<div>₿ BTC</div><div class="addr" id="btcA"></div>
+<div>₮ USDT-TRC20</div><div class="addr" id="usdtA"></div>
+<div class="row" style="justify-content:center"><button class="alt" onclick="copyTxt(document.getElementById('btcA').textContent)" data-i="btnCopy"></button></div>
+<div style="font-size:12.5px">🏦 Baran Avisat — TRY: <code dir="ltr">TR10 0001 0090 1008 4013 0050 01</code></div>
+<div style="font-size:12.5px">🏦 Baran Avisat — USD: <code dir="ltr">TR80 0001 0090 1008 4013 0050 02</code></div>
+</div>
+</section>
+</main>
+<div class="adslot" id="adFoot"><span class="ph" data-i="adHere" style="display:block;border:1px dashed var(--line);border-radius:10px;color:var(--mut);font-size:12px;padding:10px"></span></div>
+<footer><span data-i="foot"></span><br>📧 <a href="mailto:baranavisat@gmail.com">baranavisat@gmail.com</a> · 📞 <a href="tel:+905313263722" dir="ltr">+90 531 326 37 22</a> · <a href="https://wa.me/905313263722" target="_blank" rel="noopener">WhatsApp</a><br><a href="README.md" target="_blank">README</a> · MIT</footer>
+<div id="toast"></div>
+<script>
+const CONFIG={ads:{client:'',slot:'',carbonServe:'',carbonPlacement:''},
+pay:{btc:'bc1q8dhtdrndxsl70e97t8grydfe6pjue37zrhzf6c',usdt:'TLWdTjqqogkXNEXGiPWsGdjFP6ioycxeWW'}};
+const VTYPES=[
+{k:'xss-r',sev:'Medium',n:{en:'Reflected XSS',tr:'Yansımalı XSS',ar:'XSS منعكس'},pl:["<script>alert(document.domain)<\/script>","'\"><svg onload=alert(1)>","javascript:alert(1)"],fix:{en:'Encode output by context; deploy strict CSP.',tr:'Çıktıyı bağlama göre kodlayın; sıkı CSP uygulayın.',ar:'رمّز المخرجات حسب السياق وطبق CSP صارم.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html'},
+{k:'xss-s',sev:'High',n:{en:'Stored XSS',tr:'Kalıcı XSS',ar:'XSS مخزنة'},pl:["<img src=x onerror=alert(document.cookie)>","<iframe srcdoc=\"<script>alert(1)<\/script>\">"],fix:{en:'Validate + encode on input and output; CSP with nonces.',tr:'Girdi/çıktıda doğrulama + kodlama; nonce\u2019lu CSP.',ar:'تحقق وترميز عند الإدخال والإخراج.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html'},
+{k:'xss-dom',sev:'Medium',n:{en:'DOM XSS',tr:'DOM XSS',ar:'XSS DOM'},pl:["#<img src=x onerror=alert(1)>","javascript:alert(document.domain)"],fix:{en:'Avoid sinks like innerHTML; use safe DOM APIs.',tr:'innerHTML gibi sink\u2019lerden kaçının.',ar:'تجنب innerHTML واستخدم API آمنة.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html'},
+{k:'sqli-e',sev:'High',n:{en:'SQLi (error-based)',tr:'SQLi (hata tabanlı)',ar:'SQLi بالأخطاء'},pl:["' AND 1=CONVERT(int,@@version)--","' OR '1'='1"],fix:{en:'Parameterized queries / prepared statements only.',tr:'Sadece parametreli sorgular.',ar:'استعلامات مُعامَلة فقط.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html'},
+{k:'sqli-u',sev:'High',n:{en:'SQLi (UNION)',tr:'SQLi (UNION)',ar:'SQLi باتحاد'},pl:["' UNION SELECT 1,2,3-- -","' UNION SELECT null,version(),null--"],fix:{en:'Parameterized queries; least-privilege DB user.',tr:'Parametreli sorgular; en az yetki.',ar:'استعلامات مُعاملة وصلاحيات دنيا.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html'},
+{k:'sqli-b',sev:'Medium',n:{en:'SQLi (blind boolean)',tr:'SQLi (kör boolean)',ar:'SQLi عمياء'},pl:["' AND SLEEP(5)--","' AND 1=1-- / ' AND 1=2--"],fix:{en:'Parameterized queries; generic error pages.',tr:'Parametreli sorgular; genel hata sayfaları.',ar:'استعلامات مُعاملة وصفحات خطأ عامة.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html'},
+{k:'ssrf',sev:'High',n:{en:'SSRF',tr:'SSRF',ar:'SSRF'},pl:["http://169.254.169.254/latest/meta-data/","http://localhost:8080/admin"],fix:{en:'Allowlist egress; block metadata IPs; no redirects to user input.',tr:'Egress allowlist; metadata IP\u2019lerini engelleyin.',ar:'قائمة سماح للخروج واحجب عناوين الميتاداتا.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html'},
+{k:'idor',sev:'Medium',n:{en:'IDOR',tr:'IDOR',ar:'IDOR'},pl:["GET /api/users/123 → 124","GET /invoice/1001 → 1002"],fix:{en:'Object-level authorization checks on every access.',tr:'Her erişimde nesne-düzeyi yetkilendirme.',ar:'تحقق من التفويض على كل كائن.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html'},
+{k:'redir',sev:'Low',n:{en:'Open Redirect',tr:'Açık Yönlendirme',ar:'تحويل مفتوح'},pl:["//evil.example.com","/\\evil.example.com","?next=https://evil.example.com"],fix:{en:'Validate redirects against an allowlist.',tr:'Yönlendirmeleri allowlist ile doğrulayın.',ar:'تحقق من التحويلات بقائمة سماح.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html'},
+{k:'trav',sev:'High',n:{en:'Path Traversal',tr:'Dizin Gezme',ar:'اجتياز المسارات'},pl:["../../../../etc/passwd","..%2f..%2fwindows%2fwin.ini"],fix:{en:'Canonicalize + sandbox paths; deny separators.',tr:'Yolları kanonikleştirin ve kum havuzuna alın.',ar:'وحّد المسارات واعزلها.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Path_Traversal_Cheat_Sheet.html'},
+{k:'cmdi',sev:'Critical',n:{en:'Command Injection',tr:'Komut Enjeksiyonu',ar:'حقن الأوامر'},pl:[";id","| whoami","$(id)"],fix:{en:'Never pass input to shells; use exec-file APIs with args.',tr:'Girdiyi shell\u2019e vermeyin; argümanlı API kullanın.',ar:'لا تمرر المدخلات للشل أبداً.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html'},
+{k:'csrf',sev:'Medium',n:{en:'CSRF',tr:'CSRF',ar:'CSRF'},pl:["<form action='TARGET' method='POST'><input name='email' value='x@y.z'></form><script>document.forms[0].submit()<\/script>"],fix:{en:'SameSite cookies + anti-CSRF tokens on state changes.',tr:'SameSite çerezler + anti-CSRF token.',ar:'كوكيز SameSite ورموز مضادة.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html'},
+{k:'ssti',sev:'High',n:{en:'SSTI',tr:'SSTI',ar:'SSTI'},pl:["{{7*7}}","${7*7}","<%= 7*7 %>"],fix:{en:'Logic-less templates; never render user input as template.',tr:'Mantıksız şablonlar; girdiyi şablon olarak işlemeyin.',ar:'قوالب بلا منطق ولا تعالج المدخلات كقوالب.'},ref:'https://portswigger.net/web-security/cross-site-scripting/server-side-template-injection'},
+{k:'xxe',sev:'High',n:{en:'XXE',tr:'XXE',ar:'XXE'},pl:["<!ENTITY xxe SYSTEM \"file:///etc/passwd\">"],fix:{en:'Disable DTDs/external entities in XML parsers.',tr:'XML ayrıştırıcılarda DTD\u2019leri kapatın.',ar:'عطّل DTD في محللات XML.'},ref:'https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html'}];
+const T={
+en:{tag:'Bug bounty PoC report builder',tabB:'📝 Builder',tabH:'📚 History',tabDo:'💚 Donate',
+legalNote:'⚖️ For authorized bug-bounty targets only — never test systems without written permission.',
+bT:'📝 PoC Report Builder',bS:'Pick a vulnerability, set target + payload — get a formatted, submittable PoC report with cURL, Python and HTML.',
+inT:'Inputs',outT:'Generated PoC report',fType:'Vulnerability',fTarget:'Target URL',targetPh:'https://target.com/search',fParam:'Parameter',fMethod:'Method',fPayload:'Payload',fSev:'Severity (proposed)',fHandle:'Reporter handle (optional)',handlePh:'@handle (optional)',btnBuild:'Generate PoC',
+hT:'📚 Saved PoCs',hS:'Stored only in this browser. Export any time.',
+btnExp:'Export JSON',btnClear:'Clear all',
+doT:'💚 Support PoCForge',doS:'Free forever. Donations fund new templates and languages.',
+btnCopy:'Copy',btnDl:'Download .md',adHere:'Your dev/cloud-tool ad here',foot:'PoCForge — free builder. Test authorized targets only.',
+copied:'Copied ✅',needAll:'Target + payload required ⚠️',dlDone:'Downloaded ✅',cleared:'Cleared ✅',expDone:'Exported ✅',loaded:'Loaded ✅',
+rpSum:'Summary',rpSev:'Severity (proposed — triage decides)',rpSteps:'Steps to Reproduce',rpPoc:'Proof of Concept',rpImpact:'Impact',rpFix:'Remediation',rpRef:'References',rpBy:'Reported via',
+st1:'Open the target URL below',st2:'Inject the payload into the parameter',st3:'Observe the reflection / behavior described',st4:'Capture request + response as evidence',
+impD:'Depends on context — describe the worst realistic case honestly.'},
+tr:{tag:'Bug bounty PoC raporu oluşturucu',tabB:'📝 Oluşturucu',tabH:'📚 Geçmiş',tabDo:'💚 Destek',
+legalNote:'⚖️ Yalnızca yetkili bug-bounty hedefleri — yazılı izin olmadan test etmeyin.',
+bT:'📝 PoC Raporu Oluşturucu',bS:'Zafiyeti seçin, hedef + payload girin — cURL, Python ve HTML\u2019li hazır rapor alın.',
+inT:'Girdiler',outT:'Üretilen PoC',fType:'Zafiyet',fTarget:'Hedef URL',targetPh:'https://hedef.com/ara',fParam:'Parametre',fMethod:'Metot',fPayload:'Payload',fSev:'Şiddet (öneri)',fHandle:'Raporcu (opsiyonel)',handlePh:'@kullanıcı (opsiyonel)',btnBuild:'PoC Üret',
+hT:'📚 Kayıtlı PoC\u2019ler',hS:'Yalnızca bu tarayıcıda. İstediğinizde dışa aktarın.',
+btnExp:'JSON Dışa Aktar',btnClear:'Tümünü Sil',
+doT:'💚 Destekle',doS:'Sonsuza dek ücretsiz. Bağışlar yeni şablonlar getirir.',
+btnCopy:'Kopyala',btnDl:'.md İndir',adHere:'Reklamınız burada',foot:'PoCForge — ücretsiz oluşturucu. Yalnızca yetkili hedefler.',
+copied:'Kopyalandı ✅',needAll:'Hedef + payload gerekli ⚠️',dlDone:'İndirildi ✅',cleared:'Silindi ✅',expDone:'Dışa aktarıldı ✅',loaded:'Yüklendi ✅',
+rpSum:'Özet',rpSev:'Şiddet (öneri — triyaj karar verir)',rpSteps:'Tekrar Adımları',rpPoc:'Kavram Kanıtı',rpFix:'Düzeltme',rpImpact:'Etki',rpRef:'Referanslar',rpBy:'Raporlayan',
+st1:'Aşağıdaki hedef URL\u2019yi açın',st2:'Payload\u2019u parametreye enjekte edin',st3:'Yansımayı/davranışı gözlemleyin',st4:'İstek + yanıtı kanıt olarak kaydedin',
+impD:'Bağlama göre — en kötü gerçekçi durumu dürüstçe yazın.'},
+ar:{tag:'منشئ تقارير PoC للمكافآت',tabB:'📝 المنشئ',tabH:'📚 المحفوظ',tabDo:'💚 ادعم',
+legalNote:'⚖️ لأهداف المكافآت المصرّح بها فقط — لا تختبر دون إذن كتابي.',
+bT:'📝 منشئ تقارير PoC',bS:'اختر الثغرة وأدخل الهدف والحمولة — واحصل على تقرير جاهز مع cURL وPython وHTML.',
+inT:'المدخلات',outT:'التقرير المولّد',fType:'الثغرة',fTarget:'رابط الهدف',targetPh:'https://target.com/search',fParam:'المعامل',fMethod:'الطريقة',fPayload:'الحمولة',fSev:'الخطورة (مقترحة)',fHandle:'المعرّف (اختياري)',handlePh:'@handle (اختياري)',btnBuild:'ولّد PoC',
+hT:'📚 المحفوظة',hS:'في هذا المتصفح فقط. صدّر متى شئت.',
+btnExp:'تصدير JSON',btnClear:'مسح الكل',
+doT:'💚 ادعم PoCForge',doS:'مجاني للأبد. التبرعات تجلب قوالب جديدة.',
+btnCopy:'نسخ',btnDl:'تنزيل .md',adHere:'مساحتك الإعلانية هنا',foot:'PoCForge — منشئ مجاني. اختبر الأهداف المصرّح بها فقط.',
+copied:'تم ✅',needAll:'الهدف + الحمولة مطلوبان ⚠️',dlDone:'نُزّل ✅',cleared:'مُسح ✅',expDone:'صُدّر ✅',loaded:'حُمّل ✅',
+rpSum:'الملخص',rpSev:'الخطورة (مقترحة)',rpSteps:'خطوات الاستنساخ',rpPoc:'إثبات المفهوم',rpFix:'الإصلاح',rpImpact:'الأثر',rpRef:'المراجع',rpBy:'عبر',
+st1:'افتح رابط الهدف أدناه',st2:'احقن الحمولة في المعامل',st3:'لاحظ الانعكاس/السلوك',st4:'احفظ الطلب والاستجابة كدليل',
+impD:'حسب السياق — صف أسوأ حالة واقعية بأمانة.'}};
+let lang='en';
+const t=k=>(T[lang]&&T[lang][k])||T.en[k]||k;
+function setLang(v){lang=v;document.documentElement.lang=v;document.documentElement.dir=(v==='ar')?'rtl':'ltr';document.getElementById('langSel').value=v;
+document.querySelectorAll('[data-i]').forEach(e=>{e.textContent=t(e.dataset.i);});
+document.querySelectorAll('[data-i-ph]').forEach(e=>{e.placeholder=t(e.dataset.iPh);});
+buildTabs();buildForm();renderHist();renderDonate();}
+const TABS=[['build','tabB'],['hist','tabH'],['donate','tabDo']];
+function buildTabs(){document.getElementById('tabs').innerHTML=TABS.map(x=>`<button id="tab-${x[0]}" onclick="tab('${x[0]}')">${t(x[1])}</button>`).join('');document.getElementById('tab-build').classList.add('on');}
+function tab(w){TABS.forEach(x=>{const b=document.getElementById('tab-'+x[0]);if(b)b.classList.toggle('on',w===x[0]);document.getElementById('p-'+x[0]).classList.toggle('on',w===x[0]);});}
+function toast(m){let d=document.getElementById('toast');d.textContent=m;d.style.display='block';clearTimeout(d._h);d._h=setTimeout(()=>d.style.display='none',2200);}
+function copyTxt(x){try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(x);}catch(e){}toast(t('copied'));}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function vName(v){return (v.n[lang]||v.n.en);}
+function buildForm(){
+document.getElementById('vType').innerHTML=VTYPES.map((v,i)=>`<option value="${i}">${vName(v)} (${v.sev})</option>`).join('');
+fillPayloads();
+document.getElementById('vType').onchange=fillPayloads;
+}
+function fillPayloads(){
+const v=VTYPES[+document.getElementById('vType').value||0]||VTYPES[0];
+document.getElementById('vPayload').innerHTML=v.pl.map((p,i)=>`<option value="${i}">${esc(p).slice(0,60)}</option>`).join('');
+document.getElementById('vSev').value=v.sev;
+}
+function curlOf(method,target,param,payload){
+const sep=target.includes('?')?'&':'?';
+if(method==='GET')return `curl -i '${target}${sep}${param}=`+encodeURIComponent(payload).replace(/'/g,'%27')+`'`;
+return `curl -i -X POST '${target}' \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  --data-urlencode '${param}=`+payload.replace(/'/g,"'\\''")+`'`;
+}
+function pyOf(method,target,param,payload){
+const sep=target.includes('?')?'&':'?';
+if(method==='GET')return `import requests\n\nurl = "${target}${sep}${param}=" + __import__('urllib').parse.quote(${JSON.stringify(payload)})\nprint(requests.get(url, timeout=20).text[:2000])`;
+return `import requests\n\nr = requests.post(${JSON.stringify(target)}, data={${JSON.stringify(param)}: ${JSON.stringify(payload)}}, timeout=20)\nprint(r.status_code)\nprint(r.text[:2000])`;
+}
+function htmlOf(target,param,payload){
+return `<!-- PoC — open in a test browser profile -->\n<a href="${target.replace(/"/g,'&quot;')}?${param}=${encodeURIComponent(payload)}">click to test ${param}</a>\n<script>/* location = document.links[0].href; */<\/script>`;
+}
+function buildReport(o){
+const L=[];
+L.push(`# [${o.sev}] ${o.vuln} — ${o.target}`);
+L.push('');
+L.push(`## ${t('rpSum')}`);
+L.push(`${o.vuln} via parameter \`${o.param}\` on ${o.target}.`);
+L.push('');
+L.push(`## ${t('rpSev')}: **${o.sev}**`);
+L.push('');
+L.push(`## ${t('rpSteps')}`);
+L.push(`1. ${t('st1')}: \`${o.target}\``);
+L.push(`2. ${t('st2')} \`${o.param}\`: \`${o.payload}\``);
+L.push(`3. ${t('st3')}`);
+L.push(`4. ${t('st4')}`);
+L.push('');
+L.push(`## ${t('rpPoc')} (cURL)`);
+L.push('```bash');
+L.push(o.curl);
+L.push('```');
+L.push('');
+L.push(`## ${t('rpPoc')} (Python)`);
+L.push('```python');
+L.push(o.py);
+L.push('```');
+L.push('');
+L.push(`## ${t('rpPoc')} (HTML)`);
+L.push('```html');
+L.push(o.html);
+L.push('```');
+L.push('');
+L.push(`## ${t('rpImpact')}`);
+L.push(t('impD'));
+L.push('');
+L.push(`## ${t('rpFix')}`);
+L.push(o.fix);
+L.push('');
+L.push(`## ${t('rpRef')}`);
+L.push(o.ref);
+if(o.handle){L.push('');L.push(`## ${t('rpBy')} ${o.handle}`);}
+return L.join('\n');
+}
+let lastMD='';
+function buildPoC(){
+const v=VTYPES[+document.getElementById('vType').value||0]||VTYPES[0];
+const target=document.getElementById('vTarget').value.trim();
+const param=(document.getElementById('vParam').value.trim()||'q');
+const method=document.getElementById('vMethod').value;
+const payload=v.pl[+document.getElementById('vPayload').value||0]||v.pl[0];
+const sev=document.getElementById('vSev').value;
+const handle=document.getElementById('vHandle').value.trim();
+if(!/^https?:\/\//i.test(target)||!payload){toast(t('needAll'));return;}
+const o={vuln:vName(v),target,param,method,payload,sev,handle,
+curl:curlOf(method,target,param,payload),py:pyOf(method,target,param,payload),html:htmlOf(target,param,payload),
+fix:v.fix[lang]||v.fix.en,ref:v.ref};
+lastMD=buildReport(o);
+saveHist('['+sev+'] '+vName(v)+' — '+target,lastMD);
+document.getElementById('pocOut').innerHTML=`<span class="sev s-${sev}">${sev}</span><pre class="out">${esc(lastMD)}</pre><div class="row"><button class="alt" onclick="copyTxt(lastMD)">${t('btnCopy')}</button><button class="alt" onclick="dlMD()">${t('btnDl')}</button></div>`;
+renderHist();
+}
+function dlMD(){if(!lastMD)return;const b=new Blob([lastMD],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='poc-report.md';a.click();toast(t('dlDone'));}
+function hist(){try{return JSON.parse(localStorage.getItem('poc_hist')||'[]');}catch(e){return [];}}
+function saveHist(title,md){try{const h=hist();h.unshift({id:'P'+Date.now().toString(36).toUpperCase(),title,md,time:new Date().toLocaleString()});localStorage.setItem('poc_hist',JSON.stringify(h.slice(0,100)));}catch(e){}}
+function renderHist(){
+const h=hist();
+document.getElementById('histList').innerHTML=h.map((x,i)=>`<div class="hist"><b style="flex:1">${esc(x.title)}</b><small style="color:var(--mut)">${esc(x.time||'')}</small><button class="alt" style="padding:5px 12px;font-size:12px" onclick="loadHist(${i})">${t('btnCopy').replace(/Copy|Kopyala|نسخ/,'↩')}</button><button class="alt" style="padding:5px 12px;font-size:12px" onclick="delHist(${i})">❌</button></div>`).join('')||'<p style="color:var(--mut)">—</p>';
+}
+function loadHist(i){const x=hist()[i];if(!x)return;lastMD=x.md;tab('build');
+document.getElementById('pocOut').innerHTML=`<pre class="out">${esc(lastMD)}</pre><div class="row"><button class="alt" onclick="copyTxt(lastMD)">${t('btnCopy')}</button><button class="alt" onclick="dlMD()">${t('btnDl')}</button></div>`;toast(t('loaded'));}
+function delHist(i){try{const h=hist();h.splice(i,1);localStorage.setItem('poc_hist',JSON.stringify(h));}catch(e){}renderHist();}
+function exportHist(){const b=new Blob([JSON.stringify(hist(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='pocforge-history.json';a.click();toast(t('expDone'));}
+function clearHist(){try{localStorage.removeItem('poc_hist');}catch(e){}renderHist();toast(t('cleared'));}
+function renderDonate(){
+document.getElementById('btcA').textContent=CONFIG.pay.btc;
+document.getElementById('usdtA').textContent=CONFIG.pay.usdt;
+}
+function loadAds(){const A=CONFIG.ads,el=document.getElementById('adFoot');if(!el)return;
+if(A.client){el.innerHTML='<ins class="adsbygoogle" style="display:block" data-ad-client="'+A.client+'" data-ad-slot="'+(A.slot||'')+'" data-ad-format="auto"></ins>';
+if(!document.querySelector('script[src*="adsbygoogle"]')){const s=document.createElement('script');s.async=true;s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+A.client;s.crossOrigin='anonymous';document.head.appendChild(s);}try{(window.adsbygoogle=window.adsbygoogle||[]).push({});}catch(e){}}
+else if(A.carbonServe){el.innerHTML='';const s=document.createElement('script');s.async=true;s.id='_carbonads_js';s.src='//cdn.carbonads.com/carbon.js?serve='+A.carbonServe+'&placement='+A.carbonPlacement;el.appendChild(s);}}
+setLang('en');loadAds();renderDonate();
+</script>
+</body>
+</html>
